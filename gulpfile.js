@@ -21,7 +21,7 @@ const { src,dest,watch,parallel,series }=require('gulp'),
 	webpack=require('webpack'),
 	webpackStream=require('webpack-stream'),
 	tinypng=require('gulp-tinypng-compress')
-	autoprefixer=require('gulp-autoprefixer'),
+autoprefixer=require('gulp-autoprefixer'),
 	gutil=require('gulp-util'),
 	ftp=require('vinyl-ftp')
 
@@ -59,19 +59,20 @@ const styles=() => {
 		.pipe(browserSync.stream())
 } */
 
-const imgToApp=()=>{
-	return src(['src/images/**/*.jpg',
-		'src/images/**/*.png',
-		'src/images/**/*.jpeg'])
-	.pipe(dest('app/images'));
+const imgToApp=() => {
+	return src(['src/images/**.{jpg,jpeg,png,gif,webp}',
+		'src/images/**/*.svg',
+		'!src/images/sprites',
+		'!src/images/sprites/**/*'])
+		.pipe(dest('app/images'));
 }
-const resourcesToApp=()=>{
+const resourcesToApp=() => {
 	return src(['src/resources/**/*.*',
-		])
-	.pipe(dest('app'));
+	])
+		.pipe(dest('app'));
 }
 
-function images() {
+const images=()=>{
 	return src('app/images/**/*')
 		.pipe(imagemin(
 			[
@@ -90,18 +91,20 @@ function images() {
 		.pipe(dest('dist/images'))
 }
 
-const fonts=()=>{
+const fonts=() => {
 	src(['src/fonts/*.ttf'])
 		.pipe(ttf2woff())
 		.pipe(dest('app/fonts/'))
-	return src(['src/fonts/*.ttf'])
+	src(['src/fonts/*.ttf'])
 		.pipe(ttf2woff2())
+		.pipe(dest('app/fonts/'))
+	return src(['src/fonts/*.{woff,woff2}'])
 		.pipe(dest('app/fonts/'))
 }
 
-const svgSprites=()=>{
+const svgSprites=() => {
 
-	return src('src/images/**/*.svg')
+	return src('src/images/sprites/*.svg')
 		.pipe(svgSprite({
 			mode: {
 				stack: {
@@ -112,8 +115,8 @@ const svgSprites=()=>{
 		.pipe(dest('app/images'))
 }
 
- 
-const htmlInclude=()=> {
+
+const htmlInclude=() => {
 	return src('src/index.html')
 		.pipe(fileInclude({
 			prefix: '@',
@@ -123,39 +126,39 @@ const htmlInclude=()=> {
 		.pipe(browserSync.stream())
 }
 
-const scripts=()=>{
+const scripts=() => {
 	return src('src/js/main.js')
-	.pipe(webpackStream({
-		output:{
-			filename: 'main.js'
-		},
-		module: {
-			rules: [
-				{
-					test: /\.m?js$/,
-					exclude: /(node_modules|bower_components)/,
-					use: {
-						loader: 'babel-loader',
-						options: {
-							presets: ['@babel/preset-env']
+		.pipe(webpackStream({
+			output: {
+				filename: 'main.js'
+			},
+			module: {
+				rules: [
+					{
+						test: /\.m?js$/,
+						exclude: /(node_modules|bower_components)/,
+						use: {
+							loader: 'babel-loader',
+							options: {
+								presets: ['@babel/preset-env']
+							}
 						}
 					}
-				}
-			]
-		}
-	}))
-	.pipe(concat('main.min.js'))
-	.pipe(sourcemaps.init())
-	.pipe(uglify().on('error',notify.onError()))
-	.pipe(sourcemaps.write('.'))
-	.pipe(dest('app/js/'))
-	.pipe(browserSync.stream())
+				]
+			}
+		}))
+		.pipe(concat('main.min.js'))
+		.pipe(sourcemaps.init())
+		.pipe(uglify().on('error',notify.onError()))
+		.pipe(sourcemaps.write('.'))
+		.pipe(dest('app/js/'))
+		.pipe(browserSync.stream())
 
 }
 
-function stylesBuild() {
+const stylesBuild=()=>{
 	return src('src/scss/**/*.scss')
-		
+
 		.pipe(scss(
 			{
 				outputStyle: 'compressed'
@@ -170,11 +173,11 @@ function stylesBuild() {
 		.pipe(cleanCSS({
 			level: 2
 		}))
-		
+
 		.pipe(dest('dist/css'))
 }
 
-const scriptsBuild=()=> {
+const scriptsBuild=() => {
 	return src('src/js/main.js')
 		.pipe(webpackStream({
 			output: {
@@ -201,33 +204,36 @@ const scriptsBuild=()=> {
 }
 
 
-const tinypngf=()=>{
+const tinypngf=() => {
 	return src(['src/images/**/*.{png,jpg,jpeg}'])
 		.pipe(tinypng({
 			key: 'bCyZdt2Xc2mQLhbZKDW0JjMr9xxcFdJ7',
 			sigFile: 'images/.tinypng-sigs',
-			log: true
+			log: true,
+			parallelMax: 50
 		}))
 		.pipe(dest('dist/images'));
 }
 
 
-function build() {
+const build=() => {
 	return src([
-		
+
 		'app/fonts/**/*',
-		'app/images/sprite.svg',
+		'app/images/**/*.svg',
 		'app/*.*'
-		
+
 	],{ base: 'app' })
 		.pipe(dest('dist'))
 
 }
+
+//watch('./src/img/**.{jpg,jpeg,png,gif,webp}', imgToApp);
 function watching() {
 	watch('app/index.html').on('change',htmlInclude);
 	watch('app/scss/**/*.scss',styles);
 	watch(['app/js/**/*.js','!app/js/main.min.js'],scripts);
-	watch('app/images/**/*.svg',svgSprites)
+
 	watch('app/fonts/*.ttf',fonts)
 
 }
@@ -238,10 +244,10 @@ function browsersync() {
 			baseDir: "app/"
 		}
 	})
-	
+
 }
 
-const watchFiles=()=>{
+const watchFiles=() => {
 	browserSync.init({
 		server: {
 			baseDir: "app/"
@@ -250,19 +256,19 @@ const watchFiles=()=>{
 	})
 	watch('src/scss/**/*.scss',styles);
 	watch('src/index.html').on('change',htmlInclude);
-	watch('src/images/**/*.jpg',imgToApp);
-	watch('src/images/**/*.png',imgToApp);
-	watch('src/images/**/*.jpeg',imgToApp);
-	watch('src/images/**/*.svg',svgSprites);
+	watch('src/images/**.{jpg,jpeg,png,gif,webp}', imgToApp);
+	
+	watch(['src/images/**/*.svg','!app/images/svg','!src/images/svg/**/*'],imgToApp),
+	watch('src/images/sprites/*.svg',svgSprites);
 	watch('src/resources/**/*.*',resourcesToApp);
 	watch('src/fonts/*.ttf',fonts);
 	watch(['src/js/**/*.js'],scripts);
 }
 
-const clean=()=>{
+const clean=() => {
 	return del('app/*')
 }
-const cleanDist=()=>{
+const cleanDist=() => {
 	return del('dist/*')
 }
 
