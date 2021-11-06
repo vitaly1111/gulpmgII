@@ -1,6 +1,6 @@
-import {asd} from './func'
-import {psd} from './func2'
+import {asd} from './modules/func'
+
 
 asd()
-psd()
+
 //# sourceMappingURL=main.js.map

@@ -20,10 +20,15 @@ const { src,dest,watch,parallel,series }=require('gulp'),
 	ttf2woff2=require('gulp-ttf2woff2'),
 	webpack=require('webpack'),
 	webpackStream=require('webpack-stream'),
-	tinypng=require('gulp-tinypng-compress')
-autoprefixer=require('gulp-autoprefixer'),
+	tinypng=require('gulp-tinypng-compress'),
+	autoprefixer=require('gulp-autoprefixer'),
+	rename=require('gulp-rename'),
 	gutil=require('gulp-util'),
-	ftp=require('vinyl-ftp')
+	ftp=require('vinyl-ftp');
+
+const webpackConfig=require('./webpack.config');
+
+
 
 const styles=() => {
 	return src('src/scss/**/*.scss')
@@ -73,7 +78,7 @@ const resourcesToApp=() => {
 }
 
 const images=()=>{
-	return src('app/images/**/*')
+	return src('app/images/**/*.{jpg,jpeg,png,gif}')
 		.pipe(imagemin(
 			[
 				imagemin.gifsicle({ interlaced: true }),
@@ -117,9 +122,9 @@ const svgSprites=() => {
 
 
 const htmlInclude=() => {
-	return src('src/index.html')
+	return src('src/*.html')
 		.pipe(fileInclude({
-			prefix: '@',
+			prefix: '@@',
 			basepath: '@file'
 		}))
 		.pipe(dest('app'))
@@ -127,29 +132,14 @@ const htmlInclude=() => {
 }
 
 const scripts=() => {
-	return src('src/js/main.js')
-		.pipe(webpackStream({
-			output: {
-				filename: 'main.js'
-			},
-			module: {
-				rules: [
-					{
-						test: /\.m?js$/,
-						exclude: /(node_modules|bower_components)/,
-						use: {
-							loader: 'babel-loader',
-							options: {
-								presets: ['@babel/preset-env']
-							}
-						}
-					}
-				]
-			}
-		}))
-		.pipe(concat('main.min.js'))
+	return src(['src/js/*.js'])
+		.pipe(webpackStream(webpackConfig))
+
 		.pipe(sourcemaps.init())
 		.pipe(uglify().on('error',notify.onError()))
+		.pipe(rename({
+			suffix: ".min"
+		}))
 		.pipe(sourcemaps.write('.'))
 		.pipe(dest('app/js/'))
 		.pipe(browserSync.stream())
@@ -178,29 +168,17 @@ const stylesBuild=()=>{
 }
 
 const scriptsBuild=() => {
-	return src('src/js/main.js')
-		.pipe(webpackStream({
-			output: {
-				filename: 'main.js'
-			},
-			module: {
-				rules: [
-					{
-						test: /\.m?js$/,
-						exclude: /(node_modules|bower_components)/,
-						use: {
-							loader: 'babel-loader',
-							options: {
-								presets: ['@babel/preset-env']
-							}
-						}
-					}
-				]
-			}
-		}))
-		.pipe(concat('main.min.js'))
+	return src(['src/js/*.js'])
+		.pipe(webpackStream(webpackConfig))
+
+		
 		.pipe(uglify().on('error',notify.onError()))
-		.pipe(dest('dist/js/'))
+		.pipe(rename({
+			suffix: ".min"
+		}))
+		
+		.pipe(dest('app/js/'))
+		.pipe(browserSync.stream())
 }
 
 
@@ -237,7 +215,8 @@ function watching() {
 	watch('app/fonts/*.ttf',fonts)
 
 }
-function browsersync() {
+
+const browsersync=()=>{
 
 	browserSync.init({
 		server: {
@@ -248,15 +227,16 @@ function browsersync() {
 }
 
 const watchFiles=() => {
-	browserSync.init({
+/* 	browserSync.init({
 		server: {
 			baseDir: "app/"
 		}
 
-	})
+	}) */
 	watch('src/scss/**/*.scss',styles);
-	watch('src/index.html').on('change',htmlInclude);
-	watch('src/images/**.{jpg,jpeg,png,gif,webp}', imgToApp);
+	watch(['src/*.html'],htmlInclude);
+	watch(['src/includes/*.html'],htmlInclude);
+	watch('src/images/**/*.{jpg,jpeg,png,gif,webp}', imgToApp);
 	
 	watch(['src/images/**/*.svg','!app/images/svg','!src/images/svg/**/*'],imgToApp),
 	watch('src/images/sprites/*.svg',svgSprites);
@@ -274,7 +254,6 @@ const cleanDist=() => {
 
 exports.styles=styles;
 exports.watching=watching;
-exports.browsersync=browsersync;
 exports.scripts=scripts;
 exports.images=images;
 exports.svgSprites=svgSprites;
@@ -284,6 +263,7 @@ exports.imgToApp=imgToApp;
 exports.resourcesToApp=resourcesToApp;
 exports.clean=clean;
 exports.cleanDist=cleanDist;
+exports.browsersync=browsersync;
 
 exports.watchFiles=watchFiles;
 
@@ -292,4 +272,4 @@ exports.watchFiles=watchFiles;
 exports.build=series(cleanDist,scriptsBuild,stylesBuild,images,build);
 /* exports.default=parallel(htmlInclude,scripts,fonts,styles,browsersync,watching) */
 
-exports.default=series(clean,parallel(htmlInclude,scripts,imgToApp,svgSprites,resourcesToApp,fonts),styles,watchFiles)
+exports.default=series(clean,parallel(htmlInclude,scripts,imgToApp,svgSprites,resourcesToApp,fonts),styles,parallel(browsersync,watchFiles))
