@@ -28,7 +28,50 @@ const { src,dest,watch,parallel,series }=require('gulp'),
 
 const webpackConfig=require('./webpack.config');
 
+const libCSS=() => {
+	return src('src/vendor/normalize/normalize.css')
+		.pipe(sourcemaps.init())
+		.pipe(scss(
+			{
+				outputStyle: 'compressed'
+			}
+		).on('error',notify.onError("Error: <%= error.message %>")))
+		.pipe(concat("libs.min.css"))
 
+		.pipe(autoprefixer({
+			overrideBrowserslist: ['last 10 version'],
+			grid: true
+		}))
+		.pipe(cleanCSS({
+			level: 2
+		}))
+		.pipe(sourcemaps.write('.'))
+		.pipe(dest('app/css'))
+
+		
+}
+const libCSSDist=() => {
+	return src('src/vendor/normalize/normalize.css')
+		
+		.pipe(scss(
+			{
+				outputStyle: 'compressed'
+			}
+		).on('error',notify.onError("Error: <%= error.message %>")))
+		.pipe(concat("libs.min.css"))
+
+		.pipe(autoprefixer({
+			overrideBrowserslist: ['last 10 version'],
+			grid: true
+		}))
+		.pipe(cleanCSS({
+			level: 2
+		}))
+		
+		.pipe(dest('dist/css'))
+
+	
+}
 
 const styles=() => {
 	return src('src/scss/**/*.scss')
@@ -53,24 +96,20 @@ const styles=() => {
 		.pipe(browserSync.stream())
 }
 
-/* function scripts() {
-	return src([
-		'node_modules/jquery/dist/jquery.js',
-		'app/js/main.js'
-	])
-		.pipe(concat('main.min.js'))
-		.pipe(uglify())
-		.pipe(dest('app/js'))
-		.pipe(browserSync.stream())
-} */
 
 const imgToApp=() => {
-	return src(['src/images/**.{jpg,jpeg,png,gif,webp}',
+	return src(['src/images/**/*.{jpg,jpeg,png,gif,webp,avif}',
 		'src/images/**/*.svg',
 		'!src/images/sprites',
-		'!src/images/sprites/**/*'])
+		'!src/images/sprites/**/*'],{ base: 'src/images' })
 		.pipe(dest('app/images'));
 }
+const imgToDist=() => {
+	return src(['app/images/**/*.{webp,avif,svg}'],{ base: 'app/images' })
+		.pipe(dest('dist/images'));
+}
+
+
 const resourcesToApp=() => {
 	return src(['src/resources/**/*.*',
 	])
@@ -131,6 +170,29 @@ const htmlInclude=() => {
 		.pipe(browserSync.stream())
 }
 
+/* add if needed libs*/
+
+const libJS=()=> {
+	return src([''])
+		.pipe(sourcemaps.init())
+		.pipe(concat('libs.min.js'))
+		.pipe(uglify())
+		.pipe(sourcemaps.write('.'))
+		.pipe(dest('app/js'))
+		
+} 
+const libJSDist=()=> {
+	return src([''])
+		.pipe(sourcemaps.init())
+		.pipe(concat('libs.min.js'))
+		.pipe(uglify())
+		.pipe(sourcemaps.write('.'))
+		.pipe(dest('dist/js'))
+		
+} 
+
+/* -add if needed libs- */
+
 const scripts=() => {
 	return src(['src/js/*.js'])
 		.pipe(webpackStream(webpackConfig))
@@ -178,7 +240,7 @@ const scriptsBuild=() => {
 		}))
 		
 		.pipe(dest('app/js/'))
-		.pipe(browserSync.stream())
+		
 }
 
 
@@ -198,7 +260,7 @@ const build=() => {
 	return src([
 
 		'app/fonts/**/*',
-		'app/images/**/*.svg',
+		'app/images/**/*.{webp,avif,svg}',
 		'app/*.*'
 
 	],{ base: 'app' })
@@ -234,15 +296,18 @@ const watchFiles=() => {
 
 	}) */
 	watch('src/scss/**/*.scss',styles);
+	watch('src/blocks/**/*.scss',styles);
 	watch(['src/*.html'],htmlInclude);
+
 	watch(['src/includes/*.html'],htmlInclude);
-	watch('src/images/**/*.{jpg,jpeg,png,gif,webp}', imgToApp);
+	watch('src/images/**/*.{jpg,jpeg,png,gif,webp,avif}', imgToApp);
 	
 	watch(['src/images/**/*.svg','!app/images/svg','!src/images/svg/**/*'],imgToApp),
 	watch('src/images/sprites/*.svg',svgSprites);
 	watch('src/resources/**/*.*',resourcesToApp);
 	watch('src/fonts/*.ttf',fonts);
 	watch(['src/js/**/*.js'],scripts);
+	watch(['src/blocks/**/*.js'],scripts);
 }
 
 const clean=() => {
@@ -252,14 +317,19 @@ const cleanDist=() => {
 	return del('dist/*')
 }
 
+exports.libCSS=libCSS;
+exports.libCSSDist=libCSSDist;
 exports.styles=styles;
+exports.stylesBuild=stylesBuild;
 exports.watching=watching;
+exports.libJS=libJS;
 exports.scripts=scripts;
 exports.images=images;
 exports.svgSprites=svgSprites;
 exports.htmlInclude=htmlInclude;
 exports.tinypngf=tinypngf;
 exports.imgToApp=imgToApp;
+exports.imgToDist=imgToDist;
 exports.resourcesToApp=resourcesToApp;
 exports.clean=clean;
 exports.cleanDist=cleanDist;
@@ -269,7 +339,7 @@ exports.watchFiles=watchFiles;
 
 
 
-exports.build=series(cleanDist,scriptsBuild,stylesBuild,images,build);
+exports.build=series(cleanDist,scriptsBuild,libCSSDist,stylesBuild,imgToDist,images,build);
 /* exports.default=parallel(htmlInclude,scripts,fonts,styles,browsersync,watching) */
 
-exports.default=series(clean,parallel(htmlInclude,scripts,imgToApp,svgSprites,resourcesToApp,fonts),styles,parallel(browsersync,watchFiles))
+exports.default=series(clean,parallel(htmlInclude,scripts,imgToApp,svgSprites,resourcesToApp,fonts),libCSS,styles,parallel(browsersync,watchFiles))
