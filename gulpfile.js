@@ -111,8 +111,8 @@ const imgToDist=() => {
 
 
 const resourcesToApp=() => {
-	return src(['src/resources/**/*.*',
-	])
+	return src(['src/resources/**/*.*'
+	],{ base: 'src/resources' })
 		.pipe(dest('app'));
 }
 
@@ -142,7 +142,7 @@ const fonts=() => {
 	src(['src/fonts/*.ttf'])
 		.pipe(ttf2woff2())
 		.pipe(dest('app/fonts/'))
-	return src(['src/fonts/*.{woff,woff2}'])
+	return src(['src/fonts/*.{woff,woff2,ttf}'])
 		.pipe(dest('app/fonts/'))
 }
 
